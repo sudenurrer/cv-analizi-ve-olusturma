@@ -1,0 +1,665 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CV Analiz & Oluşturma</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;700&family=Syne:wght@700;800&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        :root {
+            --navy: #0f1e2a;
+            --accent: #3b82f6;
+            --green: #10b981;
+            --red: #ef4444;
+            --surface: #f8fafc;
+            --border: #e2e8f0;
+        }
+
+        * { font-family: 'DM Sans', sans-serif; }
+        h1, h2, .heading { font-family: 'Syne', sans-serif; }
+
+        body {
+            background: #f0f4ff;
+            background-image:
+                radial-gradient(ellipse at 20% 20%, rgba(59,130,246,0.08) 0%, transparent 50%),
+                radial-gradient(ellipse at 80% 80%, rgba(16,185,129,0.06) 0%, transparent 50%);
+            min-height: 100vh;
+        }
+
+        
+        #toast {
+            position: fixed; bottom: 24px; right: 24px;
+            padding: 12px 20px; border-radius: 12px;
+            font-weight: 600; font-size: 14px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.15);
+            transform: translateY(80px); opacity: 0;
+            transition: all 0.35s cubic-bezier(.34,1.56,.64,1);
+            z-index: 9999; pointer-events: none;
+        }
+        #toast.show { transform: translateY(0); opacity: 1; }
+        #toast.success { background: #065f46; color: #d1fae5; }
+        #toast.error   { background: #7f1d1d; color: #fee2e2; }
+        #toast.info    { background: #1e3a5f; color: #bfdbfe; }
+
+        
+        #loadingOverlay {
+            display: none; position: fixed; inset: 0;
+            background: rgba(15,30,42,0.65); backdrop-filter: blur(4px);
+            z-index: 1000; align-items: center; justify-content: center;
+            flex-direction: column; gap: 16px;
+        }
+        #loadingOverlay.active { display: flex; }
+        .spinner {
+            width: 52px; height: 52px;
+            border: 4px solid rgba(255,255,255,0.15);
+            border-top-color: #3b82f6;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        
+        .card {
+            background: white;
+            border-radius: 24px;
+            border: 1px solid var(--border);
+            box-shadow: 0 2px 16px rgba(0,0,0,0.04);
+            transition: box-shadow 0.2s;
+        }
+        .card:hover { box-shadow: 0 4px 24px rgba(0,0,0,0.08); }
+
+        
+        .upload-zone {
+            border: 2px dashed #93c5fd;
+            border-radius: 20px;
+            transition: all 0.2s;
+            cursor: pointer;
+        }
+        .upload-zone:hover, .upload-zone.drag-over {
+            border-color: var(--accent);
+            background: rgba(59,130,246,0.04);
+        }
+
+        
+        .badge {
+            display: inline-flex; align-items: center;
+            padding: 4px 12px; border-radius: 999px;
+            font-size: 11px; font-weight: 700;
+            letter-spacing: 0.05em; text-transform: uppercase;
+            transition: transform 0.2s;
+        }
+        .badge:hover { transform: scale(1.08); }
+        .badge-green { background: #dcfce7; color: #166534; border: 1px solid #bbf7d0; }
+        .badge-red   { background: #fee2e2; color: #991b1b; border: 1px solid #fecaca; }
+
+        
+        .progress-bar {
+            height: 8px; border-radius: 999px;
+            background: #e2e8f0; overflow: hidden;
+        }
+        .progress-fill {
+            height: 100%; border-radius: 999px;
+            background: linear-gradient(90deg, #3b82f6, #6366f1);
+            transition: width 1.2s cubic-bezier(.34,1.2,.64,1);
+            width: 0%;
+        }
+
+        
+        .score-ring {
+            width: 100px; height: 100px;
+            border-radius: 50%; position: relative;
+            display: flex; align-items: center; justify-content: center;
+            font-family: 'Syne', sans-serif; font-size: 26px; font-weight: 800;
+        }
+
+        
+        .tab-btn {
+            padding: 10px 24px; border-radius: 12px;
+            font-weight: 700; font-size: 14px; cursor: pointer;
+            transition: all 0.2s; border: none; background: transparent;
+            color: #94a3b8;
+        }
+        .tab-btn.active {
+            background: var(--navy); color: white;
+            box-shadow: 0 4px 12px rgba(15,30,42,0.2);
+        }
+
+        
+        .form-input {
+            width: 100%; padding: 12px 16px;
+            border: 1.5px solid var(--border); border-radius: 12px;
+            font-size: 14px; background: white; color: #1e293b;
+            transition: border-color 0.2s, box-shadow 0.2s;
+            outline: none;
+        }
+        .form-input:focus {
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px rgba(59,130,246,0.1);
+        }
+
+        
+        .exp-row, .edu-row, .proj-row {
+            background: var(--surface); border: 1px solid var(--border);
+            border-radius: 14px; padding: 14px; position: relative;
+        }
+
+        .remove-btn {
+            position: absolute; top: 10px; right: 12px;
+            background: none; border: none; color: #cbd5e1;
+            cursor: pointer; font-size: 18px; line-height: 1;
+            transition: color 0.2s;
+        }
+        .remove-btn:hover { color: var(--red); }
+
+        
+        .skill-chip {
+            display: inline-flex; align-items: center; gap: 6px;
+            background: #eff6ff; border: 1.5px solid #bfdbfe;
+            color: #1d4ed8; border-radius: 999px;
+            padding: 5px 12px; font-size: 13px; font-weight: 600;
+        }
+        .skill-chip button {
+            background: none; border: none; color: #93c5fd;
+            cursor: pointer; padding: 0; line-height: 1; font-size: 15px;
+            transition: color 0.2s;
+        }
+        .skill-chip button:hover { color: var(--red); }
+
+        /* ── Animasyonlar ── */
+        @keyframes fadeUp {
+            from { opacity: 0; transform: translateY(16px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+        .animate-up { animation: fadeUp 0.4s ease-out both; }
+
+        /* ── Rol Uyum Çubukları ── */
+        .role-bar-item { margin-bottom: 8px; }
+        .role-bar-label {
+            display: flex; justify-content: space-between;
+            font-size: 12px; font-weight: 600; color: #475569; margin-bottom: 4px;
+        }
+        .mini-bar {
+            height: 6px; border-radius: 999px; background: #e2e8f0;
+        }
+        .mini-fill {
+            height: 100%; border-radius: 999px;
+            background: linear-gradient(90deg, #0f1e2a, #3b82f6);
+            transition: width 1s ease;
+        }
+    </style>
+</head>
+<body>
+
+
+<div id="loadingOverlay">
+    <div class="spinner"></div>
+    <p id="loadingText" style="color:white; font-weight:600; font-size:15px;">İşleniyor...</p>
+</div>
+
+<!-- Toast -->
+<div id="toast"></div>
+
+<div class="max-w-4xl mx-auto px-4 py-10 space-y-8">
+
+    <!-- Header -->
+    <div class="text-center mb-2">
+        <h1 class="text-4xl font-black text-gray-900 heading">CV ANALİZ & OLUŞTURMA</h1>
+        <p class="text-slate-500 mt-2 text-sm">PDF CV'nizi analiz edin veya profesyonel bir CV oluşturun</p>
+    </div>
+
+    <!-- Tab Switcher -->
+    <div class="flex justify-center gap-3 p-1 bg-white rounded-2xl border border-slate-200 w-fit mx-auto shadow-sm">
+        <button class="tab-btn active" onclick="switchTab('analyze')">CV Analiz</button>
+        <button class="tab-btn" onclick="switchTab('create')">CV Oluştur</button>
+    </div>
+
+    
+    <!--  ANALİZ                           -->
+    
+    <div id="tab-analyze" class="space-y-6">
+
+        <!-- Upload -->
+        <div class="card p-8">
+            <h2 class="heading text-xl font-black text-gray-800 mb-5">CV Yükle</h2>
+            <input type="file" id="cvFile" class="hidden" accept=".pdf">
+            <div class="upload-zone p-10 text-center" id="dropZone" onclick="document.getElementById('cvFile').click()">
+                <div id="uploadIcon" class="text-4xl mb-3">📄</div>
+                <p id="uploadLabel" class="text-slate-600 font-medium">PDF dosyanızı sürükleyin veya tıklayın</p>
+                <p class="text-xs text-slate-400 mt-1">Maksimum 5 MB</p>
+            </div>
+            <button onclick="uploadAndAnalyze()"
+                class="mt-5 w-full bg-[#0f1e2a] text-white py-4 rounded-2xl font-bold text-base hover:bg-blue-700 transition-all">
+                ANALİZİ BAŞLAT
+            </button>
+        </div>
+
+        <!-- Dashboard (gizli) -->
+        <div id="dashboard" class="hidden space-y-5 animate-up">
+
+            <!-- Skor Kartları -->
+            <div class="grid grid-cols-2 gap-4">
+                <!-- ATS -->
+                <div class="card p-6 flex flex-col items-center text-center">
+                    <p class="text-xs font-black text-slate-400 uppercase tracking-widest mb-3">ATS Skoru</p>
+                    <div id="atsRing" class="score-ring" style="background: conic-gradient(#10b981 0deg, #e2e8f0 0deg);">
+                        <span id="res_ats" class="z-10">%0</span>
+                    </div>
+                </div>
+                <!-- Rol -->
+                <div class="card p-6">
+                    <p class="text-xs font-black text-slate-400 uppercase tracking-widest mb-2">En Uygun Rol</p>
+                    <h3 id="res_role" class="heading text-xl font-black text-gray-800 mb-3">-</h3>
+                    <div class="progress-bar"><div id="role_bar" class="progress-fill"></div></div>
+                    <p id="role_score_text" class="text-xs text-slate-400 mt-1 text-right"></p>
+                </div>
+            </div>
+
+            <!-- Beceriler -->
+            <div class="card p-6 grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                    <h4 class="font-black text-green-700 mb-3 text-sm uppercase tracking-wide">✓ Mevcut Beceriler</h4>
+                    <div id="found_list" class="flex flex-wrap gap-2"></div>
+                </div>
+                <div>
+                    <h4 class="font-black text-red-600 mb-3 text-sm uppercase tracking-wide">✗ Eksik Beceriler</h4>
+                    <div id="missing_list" class="flex flex-wrap gap-2"></div>
+                </div>
+            </div>
+
+            <!-- Tüm Roller -->
+            <div class="card p-6">
+                <h4 class="heading font-black text-gray-800 text-sm uppercase tracking-wide mb-4">Tüm Rol Uyum Analizi</h4>
+                <div id="allRoles"></div>
+            </div>
+
+            <!-- İndir -->
+            <button id="downloadBtn" onclick="downloadReport()"
+                class="w-full flex items-center justify-center gap-3 bg-[#0f1e2a] text-white py-4 rounded-2xl font-bold hover:bg-blue-700 transition">
+                <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+                </svg>
+                PDF RAPORU İNDİR
+            </button>
+        </div>
+    </div>
+
+    
+    <!--  CV OLUŞTUR                       -->
+    
+    <div id="tab-create" class="hidden space-y-5 animate-up">
+
+        <!-- İletişim & Özet -->
+        <div class="card p-6 grid grid-cols-1 md:grid-cols-2 gap-5">
+            <div class="space-y-3">
+                <p class="text-xs font-black text-blue-500 uppercase tracking-widest">İletişim Bilgileri</p>
+                <input type="text" id="cv_name" placeholder="Ad Soyad *" class="form-input">
+                <input type="email" id="cv_email" placeholder="E-posta *" class="form-input">
+                <input type="tel" id="cv_phone" placeholder="Telefon" class="form-input">
+            </div>
+            <div class="space-y-3">
+                <p class="text-xs font-black text-blue-500 uppercase tracking-widest">Kariyer Özeti</p>
+                <textarea id="cv_summary" placeholder="Kendinizi kısaca tanıtın..." rows="5" class="form-input resize-none"></textarea>
+            </div>
+        </div>
+
+        <!-- Eğitim -->
+        <div class="card p-6">
+            <div class="flex justify-between items-center mb-4">
+                <p class="text-xs font-black text-blue-500 uppercase tracking-widest">Eğitim</p>
+                <button type="button" onclick="addEducationRow()"
+                    class="text-xs font-bold text-blue-600 hover:underline">+ Ekle</button>
+            </div>
+            <div id="education_container" class="space-y-3">
+                <div class="edu-row grid grid-cols-2 md:grid-cols-4 gap-3">
+                    <input type="text" placeholder="Okul / Üniversite" class="form-input edu-school">
+                    <input type="text" placeholder="Bölüm" class="form-input edu-dept">
+                    <input type="text" placeholder="Not Ort." class="form-input edu-gpa">
+                    <select class="form-input edu-status">
+                        <option value="Mezun">Mezun</option>
+                        <option value="Devam Ediyor">Devam Ediyor</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <!-- Deneyim -->
+        <div class="card p-6">
+            <div class="flex justify-between items-center mb-4">
+                <p class="text-xs font-black text-blue-500 uppercase tracking-widest">Deneyim</p>
+                <button type="button" onclick="addExperienceRow()"
+                    class="text-xs font-bold text-blue-600 hover:underline">+ Ekle</button>
+            </div>
+            <div id="experience_container" class="space-y-3">
+                <div class="exp-row grid grid-cols-1 md:grid-cols-3 gap-3">
+                    <input type="text" placeholder="Şirket / Kurum" class="form-input exp-company">
+                    <input type="text" placeholder="Pozisyon / Rol" class="form-input exp-position">
+                    <input type="text" placeholder="Süre (ör. 2022-2024)" class="form-input exp-duration">
+                </div>
+            </div>
+        </div>
+
+        <!-- Projeler -->
+        <div class="card p-6">
+            <div class="flex justify-between items-center mb-4">
+                <p class="text-xs font-black text-blue-500 uppercase tracking-widest">Projeler</p>
+                <button type="button" onclick="addProjectRow()"
+                    class="text-xs font-bold text-blue-600 hover:underline">+ Ekle</button>
+            </div>
+            <div id="projects_container" class="space-y-3">
+                <div class="proj-row space-y-2">
+                    <input type="text" placeholder="Proje Başlığı" class="form-input proj-title">
+                    <textarea placeholder="Proje açıklaması..." rows="2" class="form-input resize-none proj-desc"></textarea>
+                </div>
+            </div>
+        </div>
+
+        <!-- Yetenekler -->
+        <div class="card p-6">
+            <p class="text-xs font-black text-blue-500 uppercase tracking-widest mb-4">Yetenekler</p>
+            <div class="flex gap-2 mb-3">
+                <input type="text" id="skillInput" placeholder="Yetenek ekle (ör. Python)" class="form-input"
+                    onkeydown="if(event.key==='Enter'){event.preventDefault();addSkill();}">
+                <button type="button" onclick="addSkill()"
+                    class="px-4 py-2 bg-blue-600 text-white rounded-xl font-bold text-sm hover:bg-blue-700 transition whitespace-nowrap">
+                    + Ekle
+                </button>
+            </div>
+            <div id="skills_container" class="flex flex-wrap gap-2"></div>
+        </div>
+
+        <!-- Gönder -->
+        <button id="genBtn" onclick="generateAndDownloadCV()"
+            class="w-full bg-[#0f1e2a] text-white py-4 rounded-2xl font-bold text-base hover:bg-blue-700 transition-all">
+            CV OLUŞTUR & İNDİR
+        </button>
+    </div>
+
+</div>
+
+<script>
+// ─── STATE 
+let currentReportId = null;
+
+// ─── TOAST 
+function showToast(msg, type = 'info', duration = 3500) {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.className = `show ${type}`;
+    setTimeout(() => { t.className = ''; }, duration);
+}
+
+// ─── LOADING 
+function setLoading(active, text = 'İşleniyor...') {
+    const overlay = document.getElementById('loadingOverlay');
+    document.getElementById('loadingText').textContent = text;
+    overlay.classList.toggle('active', active);
+}
+
+// ─── TAB 
+function switchTab(tab) {
+    ['analyze', 'create'].forEach(t => {
+        document.getElementById(`tab-${t}`).classList.toggle('hidden', t !== tab);
+    });
+    document.querySelectorAll('.tab-btn').forEach((btn, i) => {
+        btn.classList.toggle('active', (i === 0 && tab === 'analyze') || (i === 1 && tab === 'create'));
+    });
+}
+
+// ─── DRAG & DROP 
+const dropZone = document.getElementById('dropZone');
+dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('drag-over'); });
+dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
+dropZone.addEventListener('drop', e => {
+    e.preventDefault(); dropZone.classList.remove('drag-over');
+    const file = e.dataTransfer.files[0];
+    if (file && file.type === 'application/pdf') {
+        document.getElementById('cvFile').files = e.dataTransfer.files;
+        document.getElementById('uploadLabel').textContent = `✓ ${file.name}`;
+        document.getElementById('uploadIcon').textContent = '✅';
+    } else {
+        showToast('Sadece PDF dosyası yüklenebilir!', 'error');
+    }
+});
+
+document.getElementById('cvFile').addEventListener('change', function () {
+    if (this.files[0]) {
+        document.getElementById('uploadLabel').textContent = `✓ ${this.files[0].name}`;
+        document.getElementById('uploadIcon').textContent = '✅';
+    }
+});
+
+// ─── ATS RING 
+function setAtsRing(score) {
+    const color = score > 60 ? '#10b981' : '#ef4444';
+    const deg = Math.round(score * 3.6);
+    document.getElementById('atsRing').style.background =
+        `conic-gradient(${color} ${deg}deg, #e2e8f0 ${deg}deg)`;
+    const el = document.getElementById('res_ats');
+    el.textContent = `%${score}`;
+    el.style.color = color;
+}
+
+// ─── ANALİZ 
+async function uploadAndAnalyze() {
+    const file = document.getElementById('cvFile').files[0];
+    if (!file) { showToast('Lütfen bir PDF dosyası seçin!', 'error'); return; }
+    if (file.size > 5 * 1024 * 1024) { showToast('Dosya 5 MB\'ı geçemez!', 'error'); return; }
+
+    setLoading(true, 'CV analiz ediliyor...');
+    const fd = new FormData();
+    fd.append('file', file);
+
+    try {
+        const res = await fetch('http://127.0.0.1:8000/analyze', { method: 'POST', body: fd });
+        if (!res.ok) {
+            const err = await res.json();
+            throw new Error(err.detail || err.error || 'Sunucu hatası');
+        }
+        const data = await res.json();
+        currentReportId = data.report_id;
+
+        
+        document.getElementById('res_role').textContent = data.best_role;
+        document.getElementById('role_bar').style.width = data.best_score + '%';
+        document.getElementById('role_score_text').textContent = `%${data.best_score} uyum`;
+        setAtsRing(data.ats_score);
+
+        document.getElementById('found_list').innerHTML =
+            (data.found_skills.length ? data.found_skills : ['—'])
+            .map(s => `<span class="badge badge-green">${s}</span>`).join('');
+
+        document.getElementById('missing_list').innerHTML =
+            (data.missing_skills.length ? data.missing_skills : ['Tüm kriterler karşılanıyor!'])
+            .map(s => `<span class="badge badge-red">${s}</span>`).join('');
+
+        // Tüm roller
+        const sorted = Object.entries(data.role_scores).sort((a, b) => b[1] - a[1]);
+        document.getElementById('allRoles').innerHTML = sorted.map(([role, score]) => `
+            <div class="role-bar-item">
+                <div class="role-bar-label">
+                    <span>${role}</span><span>%${score}</span>
+                </div>
+                <div class="mini-bar">
+                    <div class="mini-fill" style="width:${score}%"></div>
+                </div>
+            </div>`).join('');
+
+        document.getElementById('dashboard').classList.remove('hidden');
+        document.getElementById('dashboard').scrollIntoView({ behavior: 'smooth' });
+        showToast('Analiz tamamlandı!', 'success');
+    } catch (e) {
+        showToast(e.message || 'Bağlantı hatası! Backend çalışıyor mu?', 'error');
+    } finally {
+        setLoading(false);
+    }
+}
+
+// ─── RAPOR İNDİR 
+async function downloadReport() {
+    if (!currentReportId) { showToast('Önce analiz çalıştırın!', 'error'); return; }
+    setLoading(true, 'Rapor hazırlanıyor...');
+    try {
+        const res = await fetch(`http://127.0.0.1:8000/download-report/${currentReportId}`);
+        if (!res.ok) throw new Error('Rapor bulunamadı.');
+        const blob = await res.blob();
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url; a.download = 'Kariyer_Analiz_Raporu.pdf'; a.click();
+        URL.revokeObjectURL(url);
+        showToast('Rapor indirildi!', 'success');
+    } catch (e) {
+        showToast(e.message, 'error');
+    } finally {
+        setLoading(false);
+    }
+}
+
+// ─── FORM: EĞİTİM 
+function addEducationRow() {
+    const container = document.getElementById('education_container');
+    const div = document.createElement('div');
+    div.className = 'edu-row grid grid-cols-2 md:grid-cols-4 gap-3 animate-up';
+    div.innerHTML = `
+        <input type="text" placeholder="Okul / Üniversite" class="form-input edu-school">
+        <input type="text" placeholder="Bölüm" class="form-input edu-dept">
+        <input type="text" placeholder="Not Ort." class="form-input edu-gpa">
+        <div class="flex gap-2">
+            <select class="form-input edu-status flex-1">
+                <option value="Mezun">Mezun</option>
+                <option value="Devam Ediyor">Devam Ediyor</option>
+            </select>
+            <button type="button" class="remove-btn" onclick="this.parentElement.parentElement.remove()">✕</button>
+        </div>`;
+    container.appendChild(div);
+}
+
+// ─── FORM: DENEYİM 
+function addExperienceRow() {
+    const container = document.getElementById('experience_container');
+    const div = document.createElement('div');
+    div.className = 'exp-row grid grid-cols-1 md:grid-cols-3 gap-3 animate-up';
+    div.innerHTML = `
+        <input type="text" placeholder="Şirket / Kurum" class="form-input exp-company">
+        <input type="text" placeholder="Pozisyon / Rol" class="form-input exp-position">
+        <div class="flex gap-2">
+            <input type="text" placeholder="Süre (ör. 2022-2024)" class="form-input exp-duration flex-1">
+            <button type="button" class="remove-btn" onclick="this.parentElement.parentElement.remove()">✕</button>
+        </div>`;
+    container.appendChild(div);
+}
+
+// ─── FORM: PROJE 
+function addProjectRow() {
+    const container = document.getElementById('projects_container');
+    const div = document.createElement('div');
+    div.className = 'proj-row space-y-2 animate-up';
+    div.innerHTML = `
+        <div class="flex gap-2">
+            <input type="text" placeholder="Proje Başlığı" class="form-input proj-title flex-1">
+            <button type="button" class="remove-btn static" style="position:static" onclick="this.parentElement.parentElement.remove()">✕</button>
+        </div>
+        <textarea placeholder="Proje açıklaması..." rows="2" class="form-input resize-none proj-desc"></textarea>`;
+    container.appendChild(div);
+}
+
+// ─── FORM: YETENEKler (Chip Sistemi) 
+function addSkill() {
+    const input = document.getElementById('skillInput');
+    const val = input.value.trim();
+    if (!val) return;
+    const container = document.getElementById('skills_container');
+    const chip = document.createElement('span');
+    chip.className = 'skill-chip animate-up';
+    chip.innerHTML = `${val}<button type="button" onclick="this.parentElement.remove()">✕</button>`;
+    container.appendChild(chip);
+    input.value = '';
+    input.focus();
+}
+
+// ─── CV OLUŞTUR & İNDİR 
+async function generateAndDownloadCV() {
+    const name  = document.getElementById('cv_name').value.trim();
+    const email = document.getElementById('cv_email').value.trim();
+    if (!name)  { showToast('İsim zorunludur!', 'error'); return; }
+    if (!email) { showToast('E-posta zorunludur!', 'error'); return; }
+    if (!email.includes('@')) { showToast('Geçerli bir e-posta girin!', 'error'); return; }
+
+    
+    const eduList = Array.from(document.querySelectorAll('.edu-row')).map(row => {
+        const school = row.querySelector('.edu-school').value.trim();
+        if (!school) return null;
+        const dept   = row.querySelector('.edu-dept').value.trim();
+        const gpa    = row.querySelector('.edu-gpa').value.trim();
+        const status = row.querySelector('.edu-status').value;
+        return `${school}${dept ? ' — ' + dept : ''}${gpa ? ' (Not: ' + gpa + ')' : ''} | ${status}`;
+    }).filter(Boolean);
+
+    
+    const expList = Array.from(document.querySelectorAll('.exp-row')).map(row => {
+        const company  = row.querySelector('.exp-company')?.value.trim();
+        const position = row.querySelector('.exp-position')?.value.trim();
+        const duration = row.querySelector('.exp-duration')?.value.trim();
+        if (!company && !position) return null;
+        return `${company || ''}${position ? ' — ' + position : ''}${duration ? ' (' + duration + ')' : ''}`;
+    }).filter(Boolean);
+
+    
+    const projList = Array.from(document.querySelectorAll('.proj-row')).map(row => {
+        const title = row.querySelector('.proj-title').value.trim();
+        const desc  = row.querySelector('.proj-desc').value.trim();
+        if (!title) return null;
+        return `${title}${desc ? ': ' + desc : ''}`;
+    }).filter(Boolean);
+
+    
+    const skills = Array.from(document.querySelectorAll('.skill-chip'))
+        .map(chip => chip.childNodes[0].textContent.trim())
+        .filter(Boolean);
+
+    const cvData = {
+        name, email,
+        phone:      document.getElementById('cv_phone').value.trim(),
+        summary:    document.getElementById('cv_summary').value.trim(),
+        experience: expList,
+        education:  eduList,
+        skills,
+        projects:   projList
+    };
+
+    const btn = document.getElementById('genBtn');
+    btn.textContent = 'Hazırlanıyor...';
+    btn.disabled = true;
+    setLoading(true, 'CV oluşturuluyor...');
+
+    try {
+        const res = await fetch('http://127.0.0.1:8000/generate-cv', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(cvData)
+        });
+        if (!res.ok) {
+            const err = await res.json();
+            throw new Error(err.detail || err.error || 'Sunucu hatası');
+        }
+        const blob = await res.blob();
+        const url  = URL.createObjectURL(blob);
+        const a    = document.createElement('a');
+        a.href = url;
+        a.download = `${name.replace(/\s+/g, '_')}_CV.pdf`;
+        a.click();
+        URL.revokeObjectURL(url);
+        showToast('CV başarıyla oluşturuldu!', 'success');
+    } catch (e) {
+        showToast(e.message || 'Hata oluştu!', 'error');
+    } finally {
+        btn.textContent = 'CV OLUŞTUR & İNDİR';
+        btn.disabled = false;
+        setLoading(false);
+    }
+}
+</script>
+</body>
+</html>
