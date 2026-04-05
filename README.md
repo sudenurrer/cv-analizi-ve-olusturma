@@ -34,3 +34,12 @@ Frontend üzerinden alınan veriler, FastAPI backend’e gönderilir ve analiz s
 ##  Projenin Amacı
 Adayların eksik yetkinliklerini fark etmelerini sağlamak ve iş başvuru süreçlerini daha etkili hale getirmek.
 
+##  Kurulum
+Projeyi çalıştırmak için:
+
+```bash
+git clone https://github.com/sudenurrer/cv-analizi-ve-olusturma.git
+cd cv-analizi-ve-olusturma
+pip install -r requirements.txt
+uvicorn main:app --reload
+
